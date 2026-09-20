@@ -18,21 +18,52 @@ if [ ! -s "$DIGEST" ]; then
   exit 1
 fi
 
-/bin/cat "$PROMPT" "$DIGEST" | "$CLAUDE_BIN" -p \
-  --tools "" \
-  --strict-mcp-config \
-  --permission-mode dontAsk \
-  > "$OUT"
-STATUS=$?
+# 生成と検証。まれにモデルがツール呼び出しを試みて出力が壊れるため、
+# 検証に落ちたら1回だけ再試行する。
+generate_once() {
+  /bin/cat "$PROMPT" "$DIGEST" | "$CLAUDE_BIN" -p \
+    --tools "" \
+    --strict-mcp-config \
+    --permission-mode dontAsk \
+    > "$OUT"
+}
 
+validate() {
+  # 空でないこと
+  [ -s "$OUT" ] || { echo "検証NG: 出力が空" >&2; return 1; }
+  # 1行目がタイトル形式であること
+  /usr/bin/head -1 "$OUT" | /usr/bin/grep -q "世界情勢ブリーフ" \
+    || { echo "検証NG: 1行目がタイトル形式でない" >&2; return 1; }
+  # ツール呼び出しの残骸が混入していないこと
+  if /usr/bin/grep -q "<invoke\|<function" "$OUT"; then
+    echo "検証NG: ツール呼び出しタグが混入" >&2
+    return 1
+  fi
+  # 最低限の分量(3000バイト)があること
+  [ "$(/usr/bin/wc -c < "$OUT" | /usr/bin/tr -d ' ')" -ge 3000 ] \
+    || { echo "検証NG: 出力が短すぎる" >&2; return 1; }
+  return 0
+}
+
+generate_once
+STATUS=$?
 if [ $STATUS -ne 0 ]; then
   echo "エラー: claude -p が終了コード $STATUS で失敗しました" >&2
   exit $STATUS
 fi
 
-if [ ! -s "$OUT" ]; then
-  echo "エラー: 記事出力が空です ($OUT)" >&2
-  exit 1
+if ! validate; then
+  echo "1回目の出力が不正のため再試行します" >&2
+  generate_once
+  STATUS=$?
+  if [ $STATUS -ne 0 ]; then
+    echo "エラー: 再試行の claude -p が終了コード $STATUS で失敗しました" >&2
+    exit $STATUS
+  fi
+  if ! validate; then
+    echo "エラー: 再試行でも出力が不正です ($OUT)" >&2
+    exit 1
+  fi
 fi
 
 # 言語制約の機械チェック: 簡体字・ハングルが混入していたら異常終了
