@@ -47,5 +47,11 @@ echo "[$(/bin/date '+%H:%M:%S')] はてな下書き投稿を開始" >> "$LOG_FIL
 "$NODE_BIN" "$ROOT/scripts/post_hatena.mjs" >> "$LOG_FILE" 2>&1 \
   || fail "はてな投稿でエラー。"
 
+# 初回投稿用の追加指示は、投稿まで成功したら外す(次回以降は通常記事)
+if [ -f "$ROOT/prompts/first-post.md" ]; then
+  /bin/mv "$ROOT/prompts/first-post.md" "$ROOT/prompts/first-post.used.md"
+  echo "[$(/bin/date '+%H:%M:%S')] 初回用指示を first-post.used.md に退避" >> "$LOG_FILE"
+fi
+
 echo "[$(/bin/date '+%H:%M:%S')] 全工程成功" >> "$LOG_FILE"
 notify "世界情勢ブリーフ" "下書き作成完了。はてな管理画面で確認できます"

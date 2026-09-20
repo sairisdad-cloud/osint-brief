@@ -21,7 +21,18 @@ fi
 # 生成と検証。まれにモデルがツール呼び出しを試みて出力が壊れるため、
 # 検証に落ちたら1回だけ再試行する。
 generate_once() {
-  /bin/cat "$PROMPT" "$DIGEST" | "$CLAUDE_BIN" -p \
+  # 初回投稿用の追加指示があれば挟む(投稿成功後にrun_daily.shがリネームして外す)
+  FIRST_POST="$ROOT/prompts/first-post.md"
+  {
+    /bin/cat "$PROMPT"
+    if [ -f "$FIRST_POST" ]; then
+      /bin/cat "$FIRST_POST"
+    fi
+    /bin/echo ""
+    /bin/echo "以下が材料テキストです。"
+    /bin/echo "----------------------------------------"
+    /bin/cat "$DIGEST"
+  } | "$CLAUDE_BIN" -p \
     --tools "" \
     --strict-mcp-config \
     --permission-mode dontAsk \
