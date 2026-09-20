@@ -1,0 +1,79 @@
+{
+  "feeds": [
+    {
+      "name": "BBC World",
+      "category": "west",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml"
+    },
+    {
+      "name": "The Guardian World",
+      "category": "west",
+      "url": "https://www.theguardian.com/world/rss"
+    },
+    {
+      "name": "Reuters (Google News経由)",
+      "category": "west",
+      "url": "https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+    },
+    {
+      "name": "AP通信 (Google News経由)",
+      "category": "west",
+      "url": "https://news.google.com/rss/search?q=site:apnews.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+    },
+    {
+      "name": "TASS英語版",
+      "category": "east",
+      "url": "https://tass.com/rss/v2.xml"
+    },
+    {
+      "name": "Al Jazeera English",
+      "category": "east",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml"
+    },
+    {
+      "name": "Anadolu英語版 (Google News経由)",
+      "category": "east",
+      "url": "https://news.google.com/rss/search?q=site:aa.com.tr+when:1d&hl=en-US&gl=US&ceid=US:en"
+    },
+    {
+      "name": "CGTN World",
+      "category": "east",
+      "url": "https://www.cgtn.com/subscribe/rss/section/world.xml"
+    },
+    {
+      "name": "Kyiv Independent",
+      "category": "party",
+      "url": "https://kyivindependent.com/feed/rss/"
+    },
+    {
+      "name": "Times of Israel",
+      "category": "party",
+      "url": "https://www.timesofisrael.com/feed/"
+    },
+    {
+      "name": "NHK 主要ニュース",
+      "category": "japan",
+      "url": "https://www.nhk.or.jp/rss/news/cat0.xml"
+    },
+    {
+      "name": "NHK 国際ニュース",
+      "category": "japan",
+      "url": "https://www.nhk.or.jp/rss/news/cat6.xml"
+    },
+    {
+      "name": "NHK 経済ニュース",
+      "category": "japan",
+      "url": "https://www.nhk.or.jp/rss/news/cat5.xml"
+    },
+    {
+      "name": "ロイター日本語 (Google News経由)",
+      "category": "japan",
+      "url": "https://news.google.com/rss/search?q=site:jp.reuters.com+when:1d&hl=ja&gl=JP&ceid=JP:ja"
+    },
+    {
+      "name": "日経 (Google News経由)",
+      "category": "japan",
+      "url": "https://news.google.com/rss/search?q=site:nikkei.com+when:1d&hl=ja&gl=JP&ceid=JP:ja"
+    }
+  ]
+}
