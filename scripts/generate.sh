@@ -23,8 +23,12 @@ fi
 generate_once() {
   # 初回投稿用の追加指示があれば挟む(投稿成功後にrun_daily.shがリネームして外す)
   FIRST_POST="$ROOT/prompts/first-post.md"
+  STYLE_REF="$ROOT/prompts/style-reference.md"
   {
     /bin/cat "$PROMPT"
+    if [ -f "$STYLE_REF" ]; then
+      /bin/cat "$STYLE_REF"
+    fi
     if [ -f "$FIRST_POST" ]; then
       /bin/cat "$FIRST_POST"
     fi
