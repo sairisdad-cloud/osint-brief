@@ -51,6 +51,11 @@
       "url": "https://www.timesofisrael.com/feed/"
     },
     {
+      "name": "Taipei Times",
+      "category": "party",
+      "url": "https://www.taipeitimes.com/xml/index.rss"
+    },
+    {
       "name": "NHK 主要ニュース",
       "category": "japan",
       "url": "https://www.nhk.or.jp/rss/news/cat0.xml"
@@ -66,14 +71,135 @@
       "url": "https://www.nhk.or.jp/rss/news/cat5.xml"
     },
     {
-      "name": "ロイター日本語 (Google News経由)",
+      "name": "ロイター日本語版 (Google News経由)",
       "category": "japan",
-      "url": "https://news.google.com/rss/search?q=site:jp.reuters.com+when:1d&hl=ja&gl=JP&ceid=JP:ja"
+      "url": "https://news.google.com/rss/search?q=site:jp.reuters.com+when:1d+-intitle:%22Stock+Price%22&hl=ja&gl=JP&ceid=JP:ja"
     },
     {
       "name": "日経 (Google News経由)",
       "category": "japan",
       "url": "https://news.google.com/rss/search?q=site:nikkei.com+when:1d&hl=ja&gl=JP&ceid=JP:ja"
+    }
+  ],
+  "telegram": [
+    "sepahcybery",
+    "Tsaplienko",
+    "br_dev",
+    "TrumpJr",
+    "medsbedtech",
+    "ukrainenowrussia"
+  ],
+  "xHeadline": ["YahooNewsTopics", "livedoornews", "IkawaMototaka"],
+  "xIgnore": [
+    "FabrizioRomano",
+    "MLB",
+    "redbullracing",
+    "Variety",
+    "HumansNoContext",
+    "Rainmaker1973",
+    "crazyclipsonly",
+    "MorbidKnowledge",
+    "Cubs",
+    "iluminatibot",
+    "TheCinesthetic",
+    "BrentRivera"
+  ],
+  "xAccounts": [
+    "elonmusk",
+    "realDonaldTrump",
+    "narendramodi",
+    "NASA",
+    "FoxNews",
+    "FabrizioRomano",
+    "WhiteHouse45",
+    "WSJ",
+    "TuckerCarlson",
+    "ndtv",
+    "DonaldJTrumpJr",
+    "MLB",
+    "IvankaTrump",
+    "guardian",
+    "SkyNews",
+    "ZelenskyyUa",
+    "tedcruz",
+    "HumansNoContext",
+    "sama",
+    "charliekirk11",
+    "OpenAI",
+    "WhiteHouse",
+    "redbullracing",
+    "WatcherGuru",
+    "libsoftiktok",
+    "Rainmaker1973",
+    "nypost",
+    "MELANIATRUMP",
+    "GiorgiaMeloni",
+    "nikkei",
+    "MarioNawfal",
+    "Variety",
+    "RT_com",
+    "KellyannePolls",
+    "crazyclipsonly",
+    "earthquake_jp",
+    "Kantei_Saigai",
+    "SpeakerMcCarthy",
+    "tkzwgrs",
+    "takaichi_sanae",
+    "FAFO_TV",
+    "hirox246",
+    "TrumpWarRoom",
+    "MorbidKnowledge",
+    "Cubs",
+    "iluminatibot",
+    "AFP",
+    "MattWallace888",
+    "flightradar24",
+    "whyyoutouzhele",
+    "DefenceU",
+    "AbeShinzo",
+    "DonaldTrump",
+    "visegrad24",
+    "YahooNewsTopics",
+    "livedoornews",
+    "PeteHegseth",
+    "tenkijp_jishin",
+    "PressSec",
+    "AndrewYNg",
+    "usairforce",
+    "kantei",
+    "SecWar",
+    "CENTCOM",
+    "AutismCapital",
+    "TansuYegen",
+    "kinnpatuhikaru",
+    "syunkon0507",
+    "BrentRivera",
+    "dom_lucre",
+    "tokyo_bousai",
+    "TheCinesthetic",
+    "TPUSA",
+    "GoogleDeepMind",
+    "IkawaMototaka"
+  ],
+  "voices": [
+    {
+      "name": "佐藤優",
+      "match": "佐藤優",
+      "news": "https://news.google.com/rss/search?q=%22%E4%BD%90%E8%97%A4%E5%84%AA%22+when:1d&hl=ja&gl=JP&ceid=JP:ja",
+      "youtubeSearch": "佐藤優",
+      "youtubeChannels": [
+        { "id": "UC90UTL_T6hQoLnWGATfOc8w", "name": "政経電論TV", "requireMatch": true }
+      ]
+    },
+    {
+      "name": "井川意高",
+      "match": "井川意高",
+      "news": "https://news.google.com/rss/search?q=%22%E4%BA%95%E5%B7%9D%E6%84%8F%E9%AB%98%22+when:1d&hl=ja&gl=JP&ceid=JP:ja",
+      "youtubeSearch": "井川意高",
+      "youtubeChannels": [
+        { "id": "UC0aToF412eWBjYJ6pPzUuZQ", "name": "井川意高が熔ける日本を斬る", "requireMatch": false },
+        { "id": "UC90UTL_T6hQoLnWGATfOc8w", "name": "政経電論TV", "requireMatch": true }
+      ]
     }
   ]
 }

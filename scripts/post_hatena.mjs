@@ -30,6 +30,55 @@ function escapeXml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function escapeHtml(s) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// 見たまま編集では、改行だけの本文は一段落に潰れる。
+// 空行で区切った各文を <p>、見出しを <h2> にして送る。
+function inlineHtml(s) {
+  const parts = [];
+  const re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+  let last = 0;
+  for (const m of s.matchAll(re)) {
+    parts.push(escapeHtml(s.slice(last, m.index)));
+    parts.push(`<a href="${escapeHtml(m[2])}">${escapeHtml(m[1])}</a>`);
+    last = m.index + m[0].length;
+  }
+  parts.push(escapeHtml(s.slice(last)));
+  return parts.join("");
+}
+
+function bodyToHtml(md) {
+  const html = [];
+  let list = [];
+  const flushList = () => {
+    if (!list.length) return;
+    html.push(`<ul>\n${list.map((li) => `<li>${inlineHtml(li)}</li>`).join("\n")}\n</ul>`);
+    list = [];
+  };
+  for (const block of md.split(/\n{2,}/)) {
+    const lines = block.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    if (lines.every((l) => l.startsWith("- "))) {
+      list.push(...lines.map((l) => l.replace(/^- /, "")));
+      continue;
+    }
+    flushList();
+    for (const line of lines) {
+      if (line.startsWith("## ")) html.push(`<h2>${inlineHtml(line.slice(3))}</h2>`);
+      else if (line.startsWith("# ")) html.push(`<h2>${inlineHtml(line.slice(2))}</h2>`);
+      else html.push(`<p>${inlineHtml(line)}</p>`);
+    }
+  }
+  flushList();
+  return html.join("\n");
+}
+
 async function main() {
   const env = loadEnv(join(ROOT, ".env"));
   for (const key of ["HATENA_ID", "HATENA_BLOG_DOMAIN", "HATENA_API_KEY"]) {
@@ -52,22 +101,24 @@ async function main() {
     .trim();
   const body = newline === -1 ? "" : article.slice(newline + 1).trim();
 
+  const html = bodyToHtml(body);
   const xml = `<?xml version="1.0" encoding="utf-8"?>
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">
   <title>${escapeXml(title)}</title>
   <author><name>${escapeXml(env.HATENA_ID)}</name></author>
-  <content type="text/plain">${escapeXml(body)}</content>
+  <content type="text/html">${escapeXml(html)}</content>
   <app:control>
     <app:draft>yes</app:draft>
   </app:control>
 </entry>`;
 
-  const endpoint = `https://blog.hatena.ne.jp/${env.HATENA_ID}/${env.HATENA_BLOG_DOMAIN}/atom/entry`;
+  const updateUrl = process.argv[2] && process.argv[2].startsWith("https://") ? process.argv[2] : "";
+  const endpoint = updateUrl || `https://blog.hatena.ne.jp/${env.HATENA_ID}/${env.HATENA_BLOG_DOMAIN}/atom/entry`;
   const auth = Buffer.from(`${env.HATENA_ID}:${env.HATENA_API_KEY}`).toString("base64");
 
   const res = await fetch(endpoint, {
-    method: "POST",
+    method: updateUrl ? "PUT" : "POST",
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
       Authorization: `Basic ${auth}`,
@@ -75,9 +126,10 @@ async function main() {
     body: xml,
   });
 
-  if (res.status === 201) {
-    const location = res.headers.get("location") || "(Locationヘッダなし)";
-    console.log("下書き投稿に成功しました (201 Created)");
+  if (res.status === 200 || res.status === 201) {
+    const location = res.headers.get("location") || updateUrl || "(Locationヘッダなし)";
+    console.log(updateUrl ? "下書きを上書きしました" : "下書き投稿に成功しました");
+    console.log(`HTTP ${res.status}`);
     console.log(`タイトル: ${title}`);
     console.log(`エントリURL: ${location}`);
   } else {

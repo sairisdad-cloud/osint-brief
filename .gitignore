@@ -2,3 +2,8 @@
 work/
 logs/
 .DS_Store
+record/work/
+record/done/
+record/inbox/*
+!record/inbox/.gitkeep
+record/ledger.jsonl

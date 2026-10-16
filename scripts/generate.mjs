@@ -1,0 +1,161 @@
+// generate.mjs: work/digest.txt を材料に Gemini で記事を書き、work/article.md に出す。
+// Claude Code のサブスクリプションが組織側で無効化されたため、
+// ショート動画側と同じ Gemini API キーで生成する。
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+function loadEnv(path) {
+  const env = {};
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m) env[m[1]] = m[2].trim();
+  }
+  return env;
+}
+
+function buildPrompt() {
+  const digest = readFileSync(join(ROOT, "work", "digest.txt"), "utf8");
+  if (!digest.trim()) {
+    throw new Error("work/digest.txt がないか空です");
+  }
+  const chunks = [readFileSync(join(ROOT, "prompts", "article.md"), "utf8")];
+  for (const name of ["共通の言い回し.md", "style-reference.md", "first-post.md"]) {
+    try {
+      chunks.push(readFileSync(join(ROOT, "prompts", name), "utf8"));
+    } catch {
+      // 任意ファイル
+    }
+  }
+  chunks.push("以下が材料テキストです。\n----------------------------------------\n" + digest);
+  return chunks.join("\n\n");
+}
+
+function stripFence(text) {
+  return text
+    .replace(/^```(?:markdown|md)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+}
+
+function validate(text) {
+  const first = text.split("\n", 1)[0] || "";
+  if (!first.includes("世界情勢ブリーフ")) return "1行目がタイトル形式でない";
+  if (/<invoke|<function/.test(text)) return "ツール呼び出しタグが混入";
+  if ([...text].length < 2500) return "出力が短すぎる";
+  if (/[\uAC00-\uD7AF\u3130-\u318F]/.test(text)) return "ハングルが混入";
+  return null;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isDemandError(msg) {
+  return /high demand|try again later|unavailable|overloaded|resource exhausted|429|503/i.test(msg);
+}
+
+async function callGemini(env, prompt, model, withThinkingConfig) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const generationConfig = {
+    temperature: 0.4,
+    maxOutputTokens: 32768,
+  };
+  if (withThinkingConfig) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": env.GEMINI_API_KEY,
+    },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig,
+      safetySettings: [
+        "HARM_CATEGORY_HARASSMENT",
+        "HARM_CATEGORY_HATE_SPEECH",
+        "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "HARM_CATEGORY_DANGEROUS_CONTENT",
+      ].map((category) => ({ category, threshold: "BLOCK_ONLY_HIGH" })),
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json.error?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+  if (json.promptFeedback?.blockReason) {
+    throw new Error(`安全フィルタで停止: ${json.promptFeedback.blockReason}`);
+  }
+  const candidate = json.candidates?.[0];
+  const text = stripFence(
+    (candidate?.content?.parts || [])
+      .filter((part) => part.text && !part.thought)
+      .map((part) => part.text)
+      .join("")
+  );
+  if (!text) {
+    throw new Error(`応答が空です (finish=${candidate?.finishReason || "none"})`);
+  }
+  return text;
+}
+
+async function main() {
+  const env = loadEnv(join(ROOT, ".env"));
+  if (!env.GEMINI_API_KEY) {
+    console.error("エラー: .env に GEMINI_API_KEY がありません");
+    process.exit(1);
+  }
+  const prompt = buildPrompt();
+  const outPath = join(ROOT, "work", "article.md");
+  const primary = env.GEMINI_MODEL || "gemini-3.6-flash";
+  const models = [primary, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite"]
+    .filter((model, index, all) => all.indexOf(model) === index);
+  let lastErr = "";
+  let useThinkingConfig = true;
+
+  for (const model of models) {
+    const tries = model === primary ? 2 : 1;
+    for (let attempt = 1; attempt <= tries; attempt++) {
+      if (attempt > 1 && isDemandError(lastErr)) {
+        console.error(`混雑のため30秒待って再試行: ${model}`);
+        await sleep(30000);
+      }
+      let text;
+      try {
+        text = await callGemini(env, prompt, model, useThinkingConfig);
+      } catch (e) {
+        const msg = e.message || String(e);
+        if (useThinkingConfig && /thinking/i.test(msg)) {
+          useThinkingConfig = false;
+          attempt -= 1;
+          continue;
+        }
+        lastErr = msg;
+        console.error(`生成失敗 (${model} ${attempt}回目): ${msg}`);
+        if (!isDemandError(msg)) break;
+        continue;
+      }
+      const problem = validate(text);
+      writeFileSync(outPath, text.endsWith("\n") ? text : `${text}\n`, "utf8");
+      if (problem) {
+        lastErr = problem;
+        console.error(`検証NG (${model} ${attempt}回目): ${problem}`);
+        continue;
+      }
+      console.log(`記事を生成しました (${model}): ${outPath} (${Buffer.byteLength(text)} バイト)`);
+      return;
+    }
+  }
+
+  console.error(`エラー: 記事生成に失敗しました (${lastErr})`);
+  process.exit(1);
+}
+
+main();
