@@ -40,12 +40,38 @@ function stripFence(text) {
     .trim();
 }
 
+const MONTHS = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
+// 出典URLとNHK記事番号に日があるのに、本文へその日が無い稿は不合格。
+// 日がURLに無い項目は、ここでも落とさない。
+function missingPublicationDates(text) {
+  const source = text.split(/##\s*7\./)[1] || "";
+  const body = (text.split(/##\s*7\./)[0] || text).split("\n").slice(1).join("\n");
+  const dates = new Set();
+  for (const m of source.matchAll(/\/(\d{4})\/(\d{2})\/(\d{2})\//g)) {
+    dates.add(`${Number(m[2])}月${Number(m[3])}日`);
+  }
+  for (const m of source.matchAll(/\/(\d{4})\/([a-z]{3})\/(\d{2})\//gi)) {
+    const month = MONTHS[m[2].toLowerCase()];
+    if (month) dates.add(`${month}月${Number(m[3])}日`);
+  }
+  for (const m of source.matchAll(/nd-(\d{4})(\d{2})(\d{2})/g)) {
+    dates.add(`${Number(m[2])}月${Number(m[3])}日`);
+  }
+  return [...dates].filter((day) => !body.includes(day));
+}
+
 function validate(text) {
   const first = text.split("\n", 1)[0] || "";
   if (!first.includes("世界情勢ブリーフ")) return "1行目がタイトル形式でない";
   if (/<invoke|<function/.test(text)) return "ツール呼び出しタグが混入";
   if ([...text].length < 2500) return "出力が短すぎる";
   if (/[\uAC00-\uD7AF\u3130-\u318F]/.test(text)) return "ハングルが混入";
+  const missing = missingPublicationDates(text);
+  if (missing.length) return `掲載日が本文に無い: ${missing.join("、")}`;
   return null;
 }
 
