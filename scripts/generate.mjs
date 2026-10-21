@@ -64,6 +64,22 @@ function missingPublicationDates(text) {
   return [...dates].filter((day) => !body.includes(day));
 }
 
+function missingTrendTitles(text) {
+  let digest = "";
+  try {
+    digest = readFileSync(join(ROOT, "work", "digest.txt"), "utf8");
+  } catch {
+    return [];
+  }
+  const section = digest.split("==== Xのトレンド ====")[1] || "";
+  const names = [...section.matchAll(/^\[タイトル\]\s+\d+\.\s+(.+)$/gm)]
+    .slice(0, 5)
+    .map((m) => m[1].trim().replace(/^#/, ""))
+    .filter(Boolean);
+  const body = (text.split(/##\s*7\./)[0] || text);
+  return names.filter((name) => !body.includes(name));
+}
+
 function validate(text) {
   const first = text.split("\n", 1)[0] || "";
   if (!first.includes("世界情勢ブリーフ")) return "1行目がタイトル形式でない";
@@ -72,6 +88,8 @@ function validate(text) {
   if (/[\uAC00-\uD7AF\u3130-\u318F]/.test(text)) return "ハングルが混入";
   const missing = missingPublicationDates(text);
   if (missing.length) return `掲載日が本文に無い: ${missing.join("、")}`;
+  const trends = missingTrendTitles(text);
+  if (trends.length) return `Xのトレンドが本文に無い: ${trends.join("、")}`;
   return null;
 }
 
