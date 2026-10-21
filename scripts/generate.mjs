@@ -64,7 +64,7 @@ function missingPublicationDates(text) {
   return [...dates].filter((day) => !body.includes(day));
 }
 
-function missingTrendTitles(text) {
+function trendNamesFromDigest() {
   let digest = "";
   try {
     digest = readFileSync(join(ROOT, "work", "digest.txt"), "utf8");
@@ -72,12 +72,76 @@ function missingTrendTitles(text) {
     return [];
   }
   const section = digest.split("==== Xのトレンド ====")[1] || "";
-  const names = [...section.matchAll(/^\[タイトル\]\s+\d+\.\s+(.+)$/gm)]
+  return [...section.matchAll(/^\[タイトル\]\s+\d+\.\s+(.+)$/gm)]
     .slice(0, 5)
     .map((m) => m[1].trim().replace(/^#/, ""))
     .filter(Boolean);
+}
+
+function missingTrendTitles(text) {
   const body = (text.split(/##\s*7\./)[0] || text);
-  return names.filter((name) => !body.includes(name));
+  return trendNamesFromDigest().filter((name) => !body.includes(name));
+}
+
+function trendPlacement(text) {
+  if (trendNamesFromDigest().length === 0) return null;
+  const body = text.split(/##\s*7\./)[0] || text;
+  const trendAt = body.search(/##\s*Xのトレンド/);
+  const ch5 = body.search(/##\s*5\./);
+  const ch6 = body.search(/##\s*6\./);
+  if (trendAt < 0 || !(ch5 < trendAt && trendAt < ch6)) {
+    return "Xのトレンドが6章の前に無い";
+  }
+  const chapter5 = body.slice(ch5, trendAt);
+  if (chapter5.includes("Xのトレンドとして")) return "Xのトレンドが5章にある";
+  return null;
+}
+
+function plainEndings(text) {
+  const body = (text.split(/##\s*6\./)[0] || text);
+  const bad = [];
+  for (const line of body.split("\n")) {
+    const s = line.trim();
+    if (!s || s.startsWith("#")) continue;
+    if (/(?:だ|である|だろう)。$/.test(s)) bad.push(s.slice(0, 30));
+  }
+  return bad;
+}
+
+const MEDIA = "BBC|ガーディアン|NHK|日経新聞|タス通信|ロイター日本語版|ロイター|アルジャジーラ|CGTN|AP通信|アナドル通信|キーウ・インディペンデント|タイペイ・タイムズ";
+
+function repeatedMedia(text) {
+  const cut = text.search(/##\s*Xのトレンド|##\s*6\./);
+  const body = cut > 0 ? text.slice(0, cut) : text;
+  const re = new RegExp(`^(同じく|さらに)?(${MEDIA})`);
+  let prev = "";
+  let count = 0;
+  for (const line of body.split("\n")) {
+    const s = line.trim();
+    if (!s) continue;
+    if (s.startsWith("#")) {
+      prev = "";
+      count = 0;
+      continue;
+    }
+    const m = s.match(re);
+    if (!m) {
+      prev = "";
+      count = 0;
+      continue;
+    }
+    const prefix = m[1] || "";
+    const name = m[2];
+    if (name !== prev) {
+      prev = name;
+      count = 1;
+      continue;
+    }
+    count += 1;
+    if (count === 2 && prefix !== "同じく") return `${name}の2件目に同じくが無い`;
+    if (count >= 3 && prefix !== "さらに") return `${name}の${count}件目にさらにが無い`;
+  }
+  return null;
 }
 
 function validate(text) {
@@ -90,6 +154,12 @@ function validate(text) {
   if (missing.length) return `掲載日が本文に無い: ${missing.join("、")}`;
   const trends = missingTrendTitles(text);
   if (trends.length) return `Xのトレンドが本文に無い: ${trends.join("、")}`;
+  const placed = trendPlacement(text);
+  if (placed) return placed;
+  const endings = plainEndings(text);
+  if (endings.length) return `だ・である・だろうで終わっている: ${endings[0]}`;
+  const media = repeatedMedia(text);
+  if (media) return media;
   return null;
 }
 
